@@ -86,7 +86,7 @@ async function init() {
 	geometry = mdl_buffer(mdl)
 
 	glMatrix.mat4.identity(m_world);
-	glMatrix.mat4.rotate(m_world, m_world, glMatrix.glMatrix.toRadian(45), []);
+	// glMatrix.mat4.rotate(m_world, m_world, glMatrix.glMatrix.toRadian(45), []);
 	const eye		= [0,	0, 	-120]
 	const center	= [0,	0,	   0]
 	const up		= [0,	1,	   0]
