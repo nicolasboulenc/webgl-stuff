@@ -4,6 +4,7 @@
 let mdl = null
 const textures = new Map()		// { source: source, image: image, id: 0 }
 let buffer_info = []			// { tag: "", texture: "", offset: geometry_index/VER_SIZE, length: buffer.length/VER_SIZE }
+let texture_id = 0
 
 let m_world = glMatrix.mat4.create()
 let m_view = glMatrix.mat4.create()
@@ -86,10 +87,12 @@ async function init() {
 	geometry = mdl_buffer(mdl)
 
 	glMatrix.mat4.identity(m_world);
-	// glMatrix.mat4.rotate(m_world, m_world, glMatrix.glMatrix.toRadian(45), []);
-	const eye		= [0,	0, 	-120]
-	const center	= [0,	0,	   0]
-	const up		= [0,	1,	   0]
+	glMatrix.mat4.translate(m_world, m_world, [0, 0, -120]);
+	glMatrix.mat4.rotate(m_world, m_world, glMatrix.glMatrix.toRadian(-90), [0, 0, 1]);
+	glMatrix.mat4.rotate(m_world, m_world, glMatrix.glMatrix.toRadian(-90), [0, 1, 0]);
+	const eye		= [0,	0,	  0]
+	const center	= [0,	0, -120]
+	const up		= [0,	1,	  0]
 	glMatrix.mat4.lookAt(m_view, eye, center, up);
 	glMatrix.mat4.perspective(m_proj, glMatrix.glMatrix.toRadian(45), CANVAS_W / CANVAS_H, 1.0, 200.0);
 
@@ -110,25 +113,12 @@ async function init() {
 	// gl.vertexAttribPointer(renderer.locations.a_texcoord.location, TEX_SIZE, gl.FLOAT, false, VER_SIZE_BYTE, POS_SIZE_BYTE)
 	gl.bindVertexArray(null)
 
-	// create vao for dynamic data
-	// renderer.vao_dyn = gl.createVertexArray()
-	// gl.bindVertexArray(renderer.vao_dyn)
+	texture_id = texture_from_array(mdl.skins[0].data)
 
-	// gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffer_dyn)
-
-	// gl.enableVertexAttribArray(renderer.locations.a_position.location)
-	// gl.vertexAttribPointer(renderer.locations.a_position.location, POS_SIZE, gl.FLOAT, false, VER_SIZE_BYTE, 0)
-
-	// gl.enableVertexAttribArray(renderer.locations.a_texcoord.location)
-	// gl.vertexAttribPointer(renderer.locations.a_texcoord.location, TEX_SIZE, gl.FLOAT, false, VER_SIZE_BYTE, POS_SIZE_BYTE)
-	// gl.bindVertexArray(null)
-	
-	
 	// create gl textures
 	for(const [key, texture] of textures) {
 		texture.id = texture_create(texture.image)
 	}
-
 
 	window.addEventListener("keydown", window_on_keydown)
 	window.addEventListener("keyup", window_on_keyup)
@@ -215,7 +205,7 @@ async function mdl_fetch(url) {
 		skin.group = data_view.getInt32(offset + i * SKIN_SIZE + 0, LITTLE_ENDIAN)
 
 		const offset2 = offset +  i * SKIN_SIZE + 4
-		skin.data = new Int8Array(buffer, offset2, header.skinwidth * header.skinheight)
+		skin.data = new Uint8Array(buffer, offset2, header.skinwidth * header.skinheight)
 		mdl.skins.push(skin)
 		// mdl->tex_id[i] = MakeTextureFromSkin (i, mdl); ????
 	}
@@ -313,30 +303,46 @@ function mdl_buffer(mdl) {
 		const offset = i * (3 * VER_SIZE)
 		const vi1 = mdl.triangles[i].vi1
 		const v1 = mdl.frames[0].frame.verts[vi1]
+		const t1 = mdl.texcoords[vi1]
 		geometry[offset + 0] = (v1.x * mdl.header.scale[0]) + mdl.header.translate[0]
 		geometry[offset + 1] = (v1.y * mdl.header.scale[1]) + mdl.header.translate[1]
 		geometry[offset + 2] = (v1.z * mdl.header.scale[2]) + mdl.header.translate[2]
 
-		geometry[offset + 3] = 0
-		geometry[offset + 4] = 0
+		let s = 0
+		if (!mdl.triangles[i].facefront && mdl.texcoords[vi1].onseam) {
+			s += mdl.header.skinwidth * 0.5;
+		}
+		geometry[offset + 3] = (t1.u + s + 0.5) / mdl.header.skinwidth
+		geometry[offset + 4] = (t1.v + 0.5) / mdl.header.skinheight
 
 		const vi2 = mdl.triangles[i].vi2
 		const v2 = mdl.frames[0].frame.verts[vi2]
+		const t2 = mdl.texcoords[vi2]
 		geometry[offset + 5] = (v2.x * mdl.header.scale[0]) + mdl.header.translate[0]
 		geometry[offset + 6] = (v2.y * mdl.header.scale[1]) + mdl.header.translate[1]
 		geometry[offset + 7] = (v2.z * mdl.header.scale[2]) + mdl.header.translate[2]
 
-		geometry[offset + 8] = 0
-		geometry[offset + 9] = 0
+		s = 0
+		if (!mdl.triangles[i].facefront && mdl.texcoords[vi1].onseam) {
+			s += mdl.header.skinwidth * 0.5;
+		}
+		geometry[offset + 8] = (t2.u + s + 0.5) / mdl.header.skinwidth
+		geometry[offset + 9] = (t2.v + 0.5) / mdl.header.skinheight
+
 
 		const vi3 = mdl.triangles[i].vi3
 		const v3 = mdl.frames[0].frame.verts[vi3]
+		const t3 = mdl.texcoords[vi3]
 		geometry[offset + 10] = (v3.x * mdl.header.scale[0]) + mdl.header.translate[0]
 		geometry[offset + 11] = (v3.y * mdl.header.scale[1]) + mdl.header.translate[1]
 		geometry[offset + 12] = (v3.z * mdl.header.scale[2]) + mdl.header.translate[2]
 
-		geometry[offset + 13] = 0
-		geometry[offset + 14] = 0
+		s = 0
+		if (!mdl.triangles[i].facefront && mdl.texcoords[vi1].onseam) {
+			s += mdl.header.skinwidth * 0.5;
+		}
+		geometry[offset + 13] = (t3.u + s + 0.5) / mdl.header.skinwidth
+		geometry[offset + 14] = (t3.v + 0.5) / mdl.header.skinheight
 
 		// console.log((v1.x * mdl.header.scale[0]) + mdl.header.translate[0], (v1.y * mdl.header.scale[1]) + mdl.header.translate[1], (v1.z * mdl.header.scale[2]) + mdl.header.translate[2])
 		// console.log((v2.x * mdl.header.scale[0]) + mdl.header.translate[0], (v2.y * mdl.header.scale[1]) + mdl.header.translate[1], (v2.z * mdl.header.scale[2]) + mdl.header.translate[2])
@@ -365,18 +371,16 @@ function draw() {
 
 	gl.useProgram(renderer.program)
 
-	// gl.activeTexture(gl.TEXTURE0)
+	gl.activeTexture(gl.TEXTURE0)
 
 	gl.uniformMatrix4fv(renderer.locations.u_matrix_world.location, gl.FALSE, m_world)
 	gl.uniformMatrix4fv(renderer.locations.u_matrix_view.location, gl.FALSE, m_view)
 	gl.uniformMatrix4fv(renderer.locations.u_matrix_proj.location, gl.FALSE, m_proj)
-	// gl.uniform1i(renderer.locations.u_texture.location, 0)
-
-
+	gl.uniform1i(renderer.locations.u_texture.location, 0)
+	
 	gl.bindVertexArray(renderer.vao_sta)
-
+	gl.bindTexture(gl.TEXTURE_2D, texture_id)
 	gl.drawArrays(gl.TRIANGLES, 0, mdl.header.num_tris * 3)
-
 	gl.bindVertexArray(null)
 
 	gl.flush()
@@ -391,6 +395,30 @@ function texture_create(image) {
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image)
+
+	return texture
+}
+
+
+function texture_from_array(ar) {
+
+	const tex = new Uint8Array(ar.length * 3)
+	for(const idx of ar) {
+		const color = colorMap[idx]
+		tex[idx*3 + 0] = color[0]
+		tex[idx*3 + 1] = color[1]
+		tex[idx*3 + 2] = color[2]
+	}
+
+	const gl = renderer.gl
+	const texture = gl.createTexture()
+	gl.bindTexture(gl.TEXTURE_2D, texture)
+
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, mdl.header.skinwidth, mdl.header.skinheight, 0, gl.RGB, gl.UNSIGNED_BYTE, tex)
 
 	return texture
 }
