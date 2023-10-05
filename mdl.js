@@ -372,6 +372,7 @@ function draw() {
 	gl.useProgram(renderer.program)
 
 	gl.activeTexture(gl.TEXTURE0)
+	gl.bindTexture(gl.TEXTURE_2D, texture_id)
 
 	gl.uniformMatrix4fv(renderer.locations.u_matrix_world.location, gl.FALSE, m_world)
 	gl.uniformMatrix4fv(renderer.locations.u_matrix_view.location, gl.FALSE, m_view)
@@ -379,7 +380,6 @@ function draw() {
 	gl.uniform1i(renderer.locations.u_texture.location, 0)
 	
 	gl.bindVertexArray(renderer.vao_sta)
-	gl.bindTexture(gl.TEXTURE_2D, texture_id)
 	gl.drawArrays(gl.TRIANGLES, 0, mdl.header.num_tris * 3)
 	gl.bindVertexArray(null)
 
@@ -403,12 +403,27 @@ function texture_create(image) {
 function texture_from_array(ar) {
 
 	const tex = new Uint8Array(ar.length * 3)
-	for(const idx of ar) {
+	for(let i=0; i<ar.length; i++) {
+		const idx = ar[i]
 		const color = colorMap[idx]
 		tex[idx*3 + 0] = color[0]
 		tex[idx*3 + 1] = color[1]
 		tex[idx*3 + 2] = color[2]
 	}
+
+	// debug
+	const ctx = document.getElementById("debug").getContext("2d")
+	const dat = ctx.createImageData(mdl.header.skinwidth, mdl.header.skinheight)	
+	for(let idx=0; idx<ar.length; idx++) {
+		const color = colorMap[ar[idx]]
+		dat.data[idx*4 + 0] = color[0]
+		dat.data[idx*4 + 1] = color[1]
+		dat.data[idx*4 + 2] = color[2]
+		dat.data[idx*4 + 3] = 255
+	}
+	ctx.putImageData(dat, 10, 10)
+	// end of debug
+
 
 	const gl = renderer.gl
 	const texture = gl.createTexture()

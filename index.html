@@ -9,23 +9,28 @@
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			overflow: hidden;
+			/* overflow: hidden; */
 			margin: 0;
 			width: 100vw;
 			height: 100vh;
 			background-color: #222;
 		}
-		canvas {
+		canvas#display {
 			width: 1920px;
 			height: 1080px;
 			background-color: darkblue;
+		}
+		canvas#debug {
+			width: 960px;
+			height: 540px;
+			background-color: lightgrey;
 		}
 	</style>
 </head>
 <body>
 <canvas id="display" width="1920" height="1080"></canvas>
 <!-- <canvas id="display" width="960" height="540"></canvas> -->
-<img id="my-img">
+<canvas id="debug" width="960" height="540"></canvas>
 <script src="gl-matrix-min.js"></script>
 <script src="mdl-anorms.js"></script>
 <script src="mdl-color-map.js"></script>
