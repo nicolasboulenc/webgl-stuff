@@ -84,15 +84,21 @@ async function init() {
 	renderer.buffer_sta = gl.createBuffer()
 
 	mdl = await mdl_fetch("armor.mdl")
+	console.log(mdl.header.skinwidth, mdl.header.skinheight)
 	geometry = mdl_buffer(mdl)
 
+	// debug
+	const img = await fetch_image("armor.png")
+	texture_id = texture_create(img)
+	document.body.appendChild(img)
+
 	glMatrix.mat4.identity(m_world);
-	glMatrix.mat4.translate(m_world, m_world, [0, 0, -120]);
-	glMatrix.mat4.rotate(m_world, m_world, glMatrix.glMatrix.toRadian(-90), [0, 0, 1]);
-	glMatrix.mat4.rotate(m_world, m_world, glMatrix.glMatrix.toRadian(-90), [0, 1, 0]);
-	const eye		= [0,	0,	  0]
-	const center	= [0,	0, -120]
-	const up		= [0,	1,	  0]
+	glMatrix.mat4.translate(m_world, m_world, [0, 0, 0]);
+	glMatrix.mat4.rotate(m_world, m_world, glMatrix.glMatrix.toRadian(90), [0, 0, 1]);
+	glMatrix.mat4.rotate(m_world, m_world, glMatrix.glMatrix.toRadian(90), [0, 1, 0]);
+	const eye		= [0,	0,	-120]
+	const center	= [0,	0, 	   0]
+	const up		= [0,	1,	   0]
 	glMatrix.mat4.lookAt(m_view, eye, center, up);
 	glMatrix.mat4.perspective(m_proj, glMatrix.glMatrix.toRadian(45), CANVAS_W / CANVAS_H, 1.0, 200.0);
 
@@ -109,11 +115,11 @@ async function init() {
 	gl.enableVertexAttribArray(renderer.locations.a_position.location)
 	gl.vertexAttribPointer(renderer.locations.a_position.location, POS_SIZE, gl.FLOAT, false, VER_SIZE_BYTE, 0)
 	
-	// gl.enableVertexAttribArray(renderer.locations.a_texcoord.location)
-	// gl.vertexAttribPointer(renderer.locations.a_texcoord.location, TEX_SIZE, gl.FLOAT, false, VER_SIZE_BYTE, POS_SIZE_BYTE)
+	gl.enableVertexAttribArray(renderer.locations.a_texcoord.location)
+	gl.vertexAttribPointer(renderer.locations.a_texcoord.location, TEX_SIZE, gl.FLOAT, false, VER_SIZE_BYTE, POS_SIZE_BYTE)
 	gl.bindVertexArray(null)
 
-	texture_id = texture_from_array(mdl.skins[0].data)
+	// texture_id = texture_from_array(mdl.skins[0].data)
 
 	// create gl textures
 	for(const [key, texture] of textures) {
@@ -353,6 +359,42 @@ function mdl_buffer(mdl) {
 }
 
 
+function quad_buffer(x, y, z, w, h) {
+
+	const VER_SIZE = 5
+	// const w = 184
+	// const h = 76
+
+	// const p_geometry = new Float32Array(VER_SIZE * 6)
+
+	const x0 = x
+	const y0 = y
+	const z0 = 0
+	const x1 = x + w/2
+	const y1 = y + h
+
+	const u = 0 / w
+	const v = 0 / h
+	const s = (w/2) / w
+	const t = h / h
+
+	const geometry = [
+		x0,	y0,	z0, u, v,
+		x0,	y1,	z0, u, v+t,
+		x1,	y1,	z0, u, v+t,
+
+		x1,	y1,	z0, u, v+t,
+		x1,	y0,	z0, u, v, 
+		x0,	y0,	z0, u, v,
+	]
+
+	// for(let i=0; i<geometry.length; i++) {
+	// 	p_geometry[i] = geometry[i]
+	// }
+
+	return new Float32Array(geometry)
+}
+
 function loop(timestamp) {
 
 	// process_input();
@@ -360,7 +402,6 @@ function loop(timestamp) {
 
 	window.requestAnimationFrame(loop)
 }
-
 
 function draw() {
 
@@ -381,6 +422,17 @@ function draw() {
 	
 	gl.bindVertexArray(renderer.vao_sta)
 	gl.drawArrays(gl.TRIANGLES, 0, mdl.header.num_tris * 3)
+	gl.bindVertexArray(null)
+
+	// draw quad
+	const geometry = quad_buffer(10, 10, -10, 184, 76)
+	gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffer_dyn)
+	gl.bufferData(gl.ARRAY_BUFFER, geometry, gl.DYNAMIC_DRAW)
+
+	gl.enableVertexAttribArray(renderer.locations.a_position.location)
+	gl.vertexAttribPointer(renderer.locations.a_position.location, POS_SIZE, gl.FLOAT, false, VER_SIZE_BYTE, 0)
+
+	gl.drawArrays(gl.TRIANGLES, 0, 6)
 	gl.bindVertexArray(null)
 
 	gl.flush()
@@ -421,7 +473,7 @@ function texture_from_array(ar) {
 		dat.data[idx*4 + 2] = color[2]
 		dat.data[idx*4 + 3] = 255
 	}
-	ctx.putImageData(dat, 10, 10)
+	ctx.putImageData(dat, 0, 0)
 	// end of debug
 
 
@@ -595,4 +647,12 @@ async function fetch_buffer(url) {
 		return buffer;
 	}
 	catch(error) { console.log(error.message); };
+}
+
+async function fetch_image(url) {
+	return new Promise(resolve => {
+		const image = new Image()
+		image.addEventListener('load', () => resolve(image))
+		image.src = url
+	});
 }
